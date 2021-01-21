@@ -236,7 +236,7 @@ attributes = {
 help_cmd = CustomHelp(command_attrs=attributes)
 
 # Create intents
-intents = discord.Intents(messages=True)
+intents = discord.Intents(messages=True, guilds=True)
 
 # Create new bot instance | Note: don't register help command - it's broken
 bot = CBot(help_command=None, description="Discord.py bot used for saving lists", intents=intents)
