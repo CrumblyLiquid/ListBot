@@ -138,32 +138,57 @@ class CustomHelp(commands.HelpCommand):
     def get_command_signature(self, command):
         return "%s%s %s" % (self.clean_prefix, command.qualified_name, command.signature)
 
+    def get_group_signature(self, group):
+        return "%s%s %s" % (self.clean_prefix, group.qualified_name, group.signature)
+
     async def send_bot_help(self, mapping):
-        embed = discord.Embed(title="ListBot Help")
+        embed = discord.Embed(title="ListBot Help", color=discord.Color.dark_gold())
         embed.set_footer(text="Made with <3 by Jaro#5648")
         for cog, commands in mapping.items():
            filtered = await self.filter_commands(commands, sort=True)
            command_signatures = [self.get_command_signature(c) for c in filtered]
            if command_signatures:
-                cog_name = getattr(cog, "qualified_name", "No Category")
+                cog_name = getattr(cog, "qualified_name", "Bot commands")
                 embed.add_field(name=cog_name, value="\n".join(command_signatures), inline=False)
 
-        channel = self.get_destination()
-        await channel.send(embed=embed)
+        await self.context.reply(embed=embed)
+
+    async def send_group_help(self, group):
+        embed = discord.Embed(title=self.get_group_signature(group), color=discord.Color.dark_gold())
+        embed.set_footer(text="Made with <3 by Jaro#5648")
+        filtered = await self.filter_commands(group.commands, sort=True)
+        command_signatures = [self.get_command_signature(c) for c in filtered]
+        if command_signatures:
+            embed.add_field(name="Commands", value="\n".join(command_signatures), inline=False)
+        alias = group.aliases
+        if alias:
+            embed.add_field(name="Aliases", value=", ".join(alias), inline=False)
+
+        await self.context.reply(embed=embed)
+
+    async def send_command_help(self, command):
+        embed = discord.Embed(title=self.get_command_signature(command), color=discord.Color.dark_gold())
+        embed.set_footer(text="Made with <3 by Jaro#5648")
+        if command.help != "":
+            embed.add_field(name="Description", value=command.help)
+        alias = command.aliases
+        if alias:
+            embed.add_field(name="Aliases", value=", ".join(alias), inline=False)
+
+        await self.context.reply(embed=embed)
+
+    # Basically passes the error from internal help command handler to our main error handler
+    async def on_help_command_error(self, ctx, error):
+        raise error
 
 # Custom bot class
 class CBot(commands.Bot):
     def __init__(self, help_command=None, description=None, intents=discord.Intents.default(), **options):
         # Load config
         self.config = Config()
-        super().__init__(command_prefix=self.config.prefix, help_command=help_command, description=description, intents=intents, **options)
 
-        # Initialize the original bot instance
-        # super().__init__(
-        # command_prefix=self.config.prefix,
-        # help_command=help_cmd,
-        # intents=intents,
-        # description="Discord.py bot used for saving lists")
+        # Initialize the bot internals
+        super().__init__(command_prefix=self.config.prefix, help_command=help_command, description=description, intents=intents, **options)
 
         # Logging | Logs discords internal stuff
         self.logger = logging.getLogger("discord")
@@ -191,11 +216,6 @@ class CBot(commands.Bot):
 
         # Create table needed for storing lists, lists are separated by `;`
         self.DB.execute("CREATE TABLE IF NOT EXISTS lists (id INTEGER PRIMARY KEY, guild_id INTEGER, name TEXT, list TEXT)", commit=True)
-
-    #     self.loop.create_task(self.setup_func())
-
-    # async def setup_func(self):
-    #     await self.wait_until_ready()
 
     async def close(self):
         self.DB.close()
@@ -230,22 +250,19 @@ class CBot(commands.Bot):
         return res
 
 # Setup the help command
-attributes = {
-    "cooldown": commands.Cooldown(2, 5.0, commands.BucketType.user),
-}
-help_cmd = CustomHelp(command_attrs=attributes)
+help_cmd = CustomHelp()
 
 # Create intents
 intents = discord.Intents(messages=True, guilds=True)
 
-# Create new bot instance | Note: don't register help command - it's broken
-bot = CBot(help_command=None, description="Discord.py bot used for saving lists", intents=intents)
+# Create new bot instance
+bot = CBot(help_command=help_cmd, description="Discord.py bot used for saving lists", intents=intents)
 
 @bot.event
 async def on_ready():
     print("Bot ready.\nLogged in as {0}".format(bot.user))
 
-@bot.group(name="list", aliases=["l", "li", "lists"])
+@bot.group(name="list", aliases=["l", "li", "lists"], help="Shows all available lists.")
 async def _list_(ctx):
     if ctx.invoked_subcommand is None:
         if ctx.guild is None:
@@ -258,9 +275,9 @@ async def _list_(ctx):
         footer = "Made with <3 by Jaro#5648"
         embed = discord.Embed(title=title, description=description, color=discord.Color.dark_gold())
         embed.set_footer(text=footer)
-        await ctx.send(embed=embed)
+        await ctx.reply(embed=embed)
 
-@_list_.command(aliases=["c", "m", "make"])
+@_list_.command(aliases=["c", "m", "make"], help="Creates new list.")
 async def create(ctx, name: str, *,list: str):
     if ctx.guild is None:
         id = ctx.author.id
@@ -275,7 +292,7 @@ async def create(ctx, name: str, *,list: str):
     embed.set_footer(text=footer)
     await ctx.send(embed=embed)
 
-@_list_.command(aliases=["d", "r", "remove"])
+@_list_.command(aliases=["d", "r", "remove"], help="Deletes selected list.")
 async def delete(ctx, name: str):
     if ctx.guild is None:
         id = ctx.author.id
@@ -291,7 +308,7 @@ async def delete(ctx, name: str):
     await ctx.send(embed=embed)
 
 
-@_list_.command(aliases=["p", "ch", "choose"])
+@_list_.command(aliases=["p", "ch", "choose"], help="Randomly chooses from selected list.")
 async def pick(ctx, name: str, amount: int = 1):
     if ctx.guild is None:
         id = ctx.author.id
