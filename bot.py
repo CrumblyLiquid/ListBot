@@ -290,7 +290,7 @@ async def create(ctx, name: str, *,list: str):
     footer = "Made with <3 by Jaro#5648"
     embed = discord.Embed(title=title, description=description, color=discord.Color.dark_gold())
     embed.set_footer(text=footer)
-    await ctx.send(embed=embed)
+    await ctx.reply(embed=embed)
 
 @_list_.command(aliases=["d", "r", "remove"], help="Deletes selected list.")
 async def delete(ctx, name: str):
@@ -305,7 +305,7 @@ async def delete(ctx, name: str):
     footer = "Made with <3 by Jaro#5648"
     embed = discord.Embed(title=title, description=description, color=discord.Color.dark_gold())
     embed.set_footer(text=footer)
-    await ctx.send(embed=embed)
+    await ctx.reply(embed=embed)
 
 
 @_list_.command(aliases=["p", "ch", "choose"], help="Randomly chooses from selected list.")
@@ -317,7 +317,7 @@ async def pick(ctx, name: str, amount: int = 1):
     list = await bot.lists_get_parsed_list(id, name)
     if list is None:
         e = discord.Embed(title=f"List: {name}", description="Invalid list name.")
-        return await ctx.send(e)
+        return await ctx.reply(e)
     temp_list = []
     temp_list += list
     picked = []
@@ -334,7 +334,7 @@ async def pick(ctx, name: str, amount: int = 1):
     footer = "Made with <3 by Jaro#5648"
     embed = discord.Embed(title=title, description=description, color=discord.Color.dark_gold())
     embed.set_footer(text=footer)
-    await ctx.send(embed=embed)
+    await ctx.reply(embed=embed)
 
 # Simple error handler
 @commands.Cog.listener()
@@ -355,22 +355,22 @@ async def on_command_error(ctx, error):
 
     # Handle general exceptions
     elif isinstance(error, commands.DisabledCommand):
-        return await ctx.send(f"This command is disabled. Try again later")
+        return await ctx.reply(f"This command is disabled. Try again later")
 
     elif isinstance(error, commands.CommandOnCooldown):
-        return await ctx.send(f"Command is on cooldown. Timeout: {round(error.retry_after)}sec")
+        return await ctx.reply(f"Command is on cooldown. Timeout: {round(error.retry_after)}sec")
 
     elif isinstance(error, commands.CommandNotFound):
-        return await ctx.send(f"Command not found.")
+        return await ctx.reply(f"Command not found.")
 
     elif isinstance(error, commands.MissingRequiredArgument):
-        return await ctx.send(f"Missing argument.")
+        return await ctx.reply(f"Missing argument.")
 
     elif isinstance(error, commands.TooManyArguments):
-        return await ctx.send(f"Too many arguments!")
+        return await ctx.reply(f"Too many arguments!")
 
     elif isinstance(error, commands.BadArgument):
-        return await ctx.send(f"Invalid argument.")
+        return await ctx.reply(f"Invalid argument.")
 
     # Print stacktrace
     print("Ignoring exception in command {}:".format(ctx.command), file=stderr)
